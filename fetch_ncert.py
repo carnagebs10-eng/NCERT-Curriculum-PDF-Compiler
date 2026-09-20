@@ -1,6 +1,7 @@
 import os
 import requests
-from pypdf import PdfMerger
+# FIXED: Proper class import configuration for pypdf
+import pypdf
 
 # Explicit user exceptions to filter out
 EXCLUDED_SUBJECTS = {
@@ -31,8 +32,8 @@ def fetch_and_compile():
     print("Initializing NCERT individual chapter fetcher...")
     os.makedirs("temp_chapters", exist_ok=True)
     
-    # Initialize pypdf merger to compile everything into 1 single output file
-    pdf_merger = PdfMerger()
+    # FIXED: Initializing merger class cleanly via root instance reference
+    pdf_merger = pypdf.PdfMerger()
     download_counter = 0
 
     # Iterating classes 1 to 12
@@ -45,27 +46,23 @@ def fetch_and_compile():
             for code in book_codes:
                 # Loop through standard chapter sequence index structures (up to 15 chapters per book)
                 for ch_num in range(1, 16):
-                    # NCERT individual chapters follow structural routing format: eg. "aeen101.pdf"
                     chapter_str = f"{ch_num:02d}"
-                    target_url = f"https://ncert.nic.in/textbook/pdf/{code}{chapter_str}.pdf"
+                    target_url = f"https://ncert.nic.in{code}{chapter_str}.pdf"
                     
                     try:
                         response = requests.head(target_url, timeout=5)
                         if response.status_code == 200:
                             print(f"Fetching Chapter: Class {class_num} - {subject_title} (Ch {ch_num})")
                             
-                            # Stream download specific chapter PDF
                             file_data = requests.get(target_url, timeout=10)
                             temp_path = f"temp_chapters/{code}_{chapter_str}.pdf"
                             
                             with open(temp_path, "wb") as f:
                                 f.write(file_data.content)
                             
-                            # Append directly into the master compilation timeline
                             pdf_merger.append(temp_path)
                             download_counter += 1
                         else:
-                            # Break inner loop if chapters for this book structural sequence run out
                             break
                     except Exception as e:
                         print(f"Skipping unavailable index node: {e}")
@@ -75,7 +72,6 @@ def fetch_and_compile():
         output_filename = "compiled_ncert_library.pdf"
         print(f"Compiling {download_counter} chapters into 1 final document: {output_filename}...")
         
-        # Write out single target master file
         with open(output_filename, "wb") as out_file:
             pdf_merger.write(out_file)
             
